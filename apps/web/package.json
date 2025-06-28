@@ -7,10 +7,10 @@
     "envFile": "../../config/apps/web/.env"
   },
   "scripts": {
-    "dev": "dotenvx run --quiet -f ../../config/apps/web/.env -- vite",
-    "build": "dotenvx run --quiet -f ../../config/apps/web/.env -- tsc -b && vite build",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "dotenvx run --quiet -f ../../config/apps/web/.env -- vite preview",
+    "preview": "vite preview",
     "knip": "knip"
   },
   "dependencies": {

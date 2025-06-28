@@ -1,10 +1,12 @@
 {
   "name": "@onlyjs/monorepo",
   "scripts": {
-    "build": "turbo build",
-    "dev": "turbo run dev serve --parallel",
-    "dev:web": "turbo run dev --filter=@onlyjs/web",
-    "dev:api": "turbo run serve --filter=@onlyjs/api",
+    "build": "bunx turbo build",
+    "dev": "bunx turbo --package-manager=bun run dev serve --parallel",
+    "dev:web": "bun run --filter=@onlyjs/web dev",
+    "dev:api": "bun run --filter=@onlyjs/api serve",
+    "db:migrate": "bunx prisma migrate dev --schema=./packages/database/schema.prisma",
+    "db:generate": "bunx prisma generate --schema=./packages/database/schema.prisma",
     "format-and-lint": "biome check .",
     "format-and-lint:fix": "biome check . --write"
   },

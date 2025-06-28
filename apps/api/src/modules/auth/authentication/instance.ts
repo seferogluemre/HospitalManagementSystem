@@ -1,9 +1,8 @@
+import { cache } from '#core';
 import prisma from '@onlyjs/db';
-import { Gender } from '@onlyjs/db/enums';
 import { betterAuth as betterAuthBase } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { openAPI } from 'better-auth/plugins';
-import { cache } from '#core';
 import { admin } from './plugins/admin';
 import { AuthenticationService } from './service';
 
@@ -49,7 +48,7 @@ export const betterAuth = betterAuthBase({
         type: 'string',
         required: true,
         fieldName: 'gender',
-        defaultValue: Gender.MALE,
+        defaultValue: 'male',
         input: false,
       },
       rolesSlugs: {
