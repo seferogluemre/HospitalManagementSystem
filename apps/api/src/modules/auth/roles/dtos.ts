@@ -1,6 +1,6 @@
+import { prepareFilters } from '#utils';
 import { RolePlain } from '@onlyjs/db/prismabox/Role';
 import { t } from 'elysia';
-import { type ControllerHook, errorResponseDto, prepareFilters, uuidValidation } from '#utils';
 import { PERMISSION_KEYS } from './constants';
 
 export const [roleFiltersDto, , filterRoles] = prepareFilters(RolePlain, {
@@ -19,61 +19,41 @@ const rolePermissionsDto = t.Union([
   }),
 ]);
 
-export const roleIndexDto = {
-  query: roleFiltersDto,
-  response: { 200: t.Array(RolePlain) },
-  detail: {
-    summary: 'Index',
-  },
-} satisfies ControllerHook;
+export const pagination = t.Object({
+  page: t.Optional(t.Numeric()),
+  limit: t.Optional(t.Numeric()),
+});
 
-export const roleShowDto = {
-  params: t.Object({
-    uuid: uuidValidation,
-  }),
-  response: { 200: RolePlain, 404: errorResponseDto[404] },
-  detail: {
-    summary: 'Show',
-  },
-} satisfies ControllerHook;
-export const roleShowResponseDto = roleShowDto.response[200];
-
-export const roleStoreDto = {
-  body: t.Object({
-    name: RolePlain.properties.name,
-    description: RolePlain.properties.description,
-    permissions: rolePermissionsDto,
-    slug: t.Optional(RolePlain.properties.slug),
-  }),
-  response: { 200: RolePlain, 409: errorResponseDto[409], 422: errorResponseDto[422] },
-  detail: {
-    summary: 'Store',
-  },
-} satisfies ControllerHook;
-
-export const roleUpdateDto = {
-  params: t.Object({
-    uuid: uuidValidation,
-  }),
-  body: t.Partial(
-    t.Object({
-      name: RolePlain.properties.name,
-      description: RolePlain.properties.description,
-      permissions: rolePermissionsDto,
-    }),
+export const recordStatus = t.Object({
+  recordStatus: t.Optional(
+    t.Union([t.Literal('ACTIVE'), t.Literal('DELETED'), t.Literal('ALL')]),
   ),
-  response: { 200: RolePlain, 404: errorResponseDto[404], 422: errorResponseDto[422] },
-  detail: {
-    summary: 'Update',
-  },
-} satisfies ControllerHook;
+});
 
-export const roleDestroyDto = {
-  params: t.Object({
-    uuid: uuidValidation,
-  }),
-  response: { 200: t.Object({ message: t.String() }), 404: errorResponseDto[404] },
-  detail: {
-    summary: 'Destroy',
-  },
-} satisfies ControllerHook;
+export const roleIndexDto = t.Object({
+  ...pagination.properties,
+  ...recordStatus.properties,
+  q: t.Optional(t.String()),
+});
+
+export const roleShowDto = t.Object({
+  uuid: t.String(),
+});
+
+export const roleShowResponseDto = roleShowDto?.response?.[200];
+
+export const roleStoreDto = t.Object({
+  name: t.String({ minLength: 2, maxLength: 50 }),
+  slug: t.String({ minLength: 2, maxLength: 50 }),
+  permissions: t.Object({}, { additionalProperties: true }),
+});
+
+export const roleUpdateDto = t.Object({
+  uuid: t.String(),
+  name: t.Optional(t.String({ minLength: 2, maxLength: 50 })),
+  permissions: t.Optional(t.Object({}, { additionalProperties: true })),
+});
+
+export const roleDestroyDto = t.Object({
+  uuid: t.String(),
+});

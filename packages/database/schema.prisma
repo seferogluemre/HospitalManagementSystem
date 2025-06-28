@@ -5,9 +5,8 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "./client"
-
+  provider               = "prisma-client-js"
+  output                 = "./client"
   runtime                = "bun"
   moduleFormat           = "esm"
   generatedFileExtension = "ts"
@@ -33,417 +32,214 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Gender {
-  MALE
-  FEMALE
-  NON_BINARY
-
-  @@map("gender")
+// ENUMS
+enum Role {
+  ADMIN
+  SECRETARY
+  DOCTOR
+  PATIENT
 }
 
-enum FileLibraryAssetType {
-  PRODUCT_IMAGE
-  USER_IMAGE
-  SCHOOL_LOGO
-  PRODUCT_BRAND_LOGO
-  SCHOOL_BRAND_LOGO
-
-  @@map("file_library_asset_type")
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELED
+  PENDING
 }
 
-enum FileLibraryAssetFileType {
-  IMAGE
-  VIDEO
+// MODELS
 
-  @@map("file_library_asset_file_type")
-}
-
-enum FileLibraryAssetMimeType {
-  IMAGE_JPEG // image/jpeg
-  IMAGE_PNG // image/png
-  IMAGE_GIF // image/gif
-  IMAGE_WEBP // image/webp
-  IMAGE_SVG // image/svg+xml
-  IMAGE_BMP // image/bmp
-  IMAGE_TIFF // image/tiff
-
-  VIDEO_MP4 // video/mp4
-  VIDEO_AVI // video/avi
-  VIDEO_MPEG // video/mpeg
-  VIDEO_WEBM // video/webm
-  VIDEO_OGG // video/ogg
-
-  @@map("file_asset_mime_type")
-}
-
+// Central User Model for Authentication and basic info
 model User {
-  id String @id @default(uuid())
+  id String @id @default(cuid())
+  /// @prismabox.options{minLength: 2, maxLength: 50}
+  firstName String
+  /// @prismabox.options{minLength: 2, maxLength: 50}
+  lastName      String
+  email         String   @unique
+  hashedPassword String?
+  phone         String?
+  role          Role
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 
-  /// @prismabox.options{minLength:3,maxLength:255}
-  email String @unique @db.VarChar(255)
+  // Role-specific profiles (One-to-One)
+  doctorProfile    DoctorProfile?
+  patientProfile   PatientProfile?
+  secretaryProfile SecretaryProfile?
 
-  /// @prismabox.options{minLength:2,maxLength:50}
-  firstName String @map("first_name") @db.VarChar(50)
-  /// @prismabox.options{minLength:2,maxLength:50}
-  lastName  String @map("last_name") @db.VarChar(50)
-  /// @prismabox.hide.input
-  name      String @map("full_name") @db.VarChar(101)
-
-  gender Gender
-
-  createdBy   User?   @relation("UserToCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  /// @prismabox.hide
-  createdById String? @map("created_by_id")
-
-  rolesSlugs String[] @default([]) @map("roles_slugs")
-
-  emailVerified Boolean
-
-  image      String?           @db.VarChar(255)
-  imageId    Int?              @map("image_id")
-  imageAsset FileLibraryAsset? @relation(fields: [imageId], references: [id])
-
-  isActive Boolean @default(true) @map("is_active")
-
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  /// @prismabox.input.hide
-  deletedAt DateTime? @map("deleted_at")
-
-  isBanned     Boolean?
-  banReason    String?
-  banExpiresAt DateTime?
-
-  createdUsers   User[]     @relation("UserToCreator")
-  auditLogs      AuditLog[] @relation("AuditLogsToUser")
-  posts          Post[]     @relation("PostToUser")
-  userRoles      UserRole[] @relation("UserRoleToUser")
-  sessions       Session[]
-  accounts       Account[]
-  impersonations Session[]  @relation("SessionToImpersonatedBy")
+  // A user can create many announcements
+  createdAnnouncements Announcement[]
 
   @@index([deletedAt])
   @@map("users")
 }
 
-model Role {
-  /// @prismabox.hide
-  id   Int    @id @default(autoincrement())
-  uuid String @unique @default(uuid())
+// Doctor-specific details
+model DoctorProfile {
+  id String @id @default(cuid())
+  userId           String      @unique
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// @prismabox.options{maxLength: 100}
+  registrationNumber String      @unique // Sicil Numarası
+  bio              String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 
-  /// @prismabox.options{minLength:2,maxLength:32}
-  name String @unique @db.VarChar(32)
+  // A doctor can have many specialties (Many-to-Many)
+  specialties      Specialty[] @relation("DoctorSpecialties")
 
-  /// @prismabox.options{minLength:2,maxLength:64}
-  slug String @unique @db.VarChar(64)
-
-  /// @prismabox.options{minLength:0,maxLength:255}
-  description String? @db.VarChar(255)
-
-  permissions Json @default("[]") @db.JsonB
-
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  /// @prismabox.input.hide
-  deletedAt DateTime? @map("deleted_at")
-
-  userRoles UserRole[] @relation("UserRoleToRole")
-
-  @@map("roles")
-}
-
-model AuditLog {
-  /// @prismabox.hide
-  id   Int    @id @default(autoincrement())
-  uuid String @unique @default(uuid())
-
-  user   User   @relation("AuditLogsToUser", fields: [userId], references: [id])
-  /// @prismabox.hide
-  userId String @map("user_id")
-
-  actionType String @map("action_type")
-  entityType String @map("entity_type")
-  entityUuid String @map("entity_uuid")
-
-  /// @prismabox.options{minLength:0,maxLength:1024}
-  description String? @map("description") @db.Text
-
-  metadata Json? @db.JsonB
-
-  ipAddress String? @map("ip_address") @db.VarChar(45)
-  userAgent String? @map("user_agent") @db.VarChar(255)
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@index([createdAt])
-  @@index([actionType])
-  @@index([entityType])
-  @@index([entityUuid])
-  @@map("audit_logs")
-}
-
-model Post {
-  /// @prismabox.hide
-  id   Int    @id @default(autoincrement())
-  uuid String @unique @default(uuid())
-
-  /// @prismabox.options{minLength:2,maxLength:255}
-  title String @db.VarChar(255)
-
-  /// @prismabox.options{minLength:2}
-  content String @db.Text
-
-  author   User   @relation("PostToUser", fields: [authorId], references: [id], onDelete: Cascade)
-  /// @prismabox.hide
-  authorId String @map("author_id")
-
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  /// @prismabox.input.hide
-  deletedAt DateTime? @map("deleted_at")
+  // A doctor can have many appointments
+  appointments     Appointment[]
 
   @@index([deletedAt])
-  @@map("posts")
+  @@map("doctor_profiles")
 }
 
-model UserRole {
-  /// @prismabox.hide
-  id Int @id @default(autoincrement())
+// Patient-specific details
+model PatientProfile {
+  id String @id @default(cuid())
+  userId       String      @unique
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bloodType    String?
+  medicalNotes String?
 
-  user   User   @relation("UserRoleToUser", fields: [userId], references: [id], onDelete: Cascade)
-  // We can't put prismabox.hide here because of bug
-  userId String @map("user_id")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 
-  role   Role @relation("UserRoleToRole", fields: [roleId], references: [id], onDelete: Cascade)
-  // We can't put prismabox.hide here because of bug
-  roleId Int  @map("role_id")
+  // A patient can have many appointments
+  appointments Appointment[]
 
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@unique([userId, roleId])
-  @@index([roleId])
-  @@index([userId])
-  @@map("user_roles")
+  @@index([deletedAt])
+  @@map("patient_profiles")
 }
 
-model Session {
-  id     String @id @default(uuid())
-  userId String @map("user_id")
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+// Secretary-specific details
+model SecretaryProfile {
+  id       String @id @default(cuid())
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  officeNumber String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 
-  /// @prismabox.hide
-  token String
-
-  impersonatedById String? @map("impersonated_by_id")
-  impersonatedBy   User?   @relation("SessionToImpersonatedBy", fields: [impersonatedById], references: [id], onDelete: SetNull)
-
-  ipAddress String? @map("ip_address")
-  userAgent String? @map("user_agent")
-
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @map("created_at")
-  updatedAt DateTime @map("updated_at")
-
-  @@unique([token])
-  @@map("sessions")
+  @@index([deletedAt])
+  @@map("secretary_profiles")
 }
 
-model Account {
-  id         String @id @default(uuid())
-  accountId  String @map("account_id")
-  providerId String @map("provider_id")
+// Medical Specialties (Branches)
+model Specialty {
+  id String @id @default(cuid())
+  /// @prismabox.options{minLength: 2, maxLength: 100}
+  name        String   @unique
+  description String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String @map("user_id")
+  // Many doctors can belong to this specialty (Many-to-Many)
+  doctors     DoctorProfile[] @relation("DoctorSpecialties")
 
-  accessToken  String? @map("access_token")
-  refreshToken String? @map("refresh_token")
-
-  idToken  String? @map("id_token")
-  scope    String?
-  password String?
-
-  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
-  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
-
-  createdAt DateTime @map("created_at")
-  updatedAt DateTime @map("updated_at")
-
-  @@map("accounts")
+  @@index([deletedAt])
+  @@map("specialties")
 }
 
-model Verification {
-  id         String @id @default(uuid())
-  identifier String
+// Appointments table
+model Appointment {
+  id              String            @id @default(cuid())
+  appointmentDate DateTime
+  status          AppointmentStatus @default(SCHEDULED)
+  notes           String?
+  
+  patientId       String
+  patient         PatientProfile    @relation(fields: [patientId], references: [id])
+  
+  doctorId        String
+  doctor          DoctorProfile     @relation(fields: [doctorId], references: [id])
+  
+  // An appointment can lead to a treatment
+  treatment       Treatment?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 
-  value String
-
-  expiresAt DateTime  @map("expires_at")
-  createdAt DateTime? @map("created_at")
-  updatedAt DateTime? @map("updated_at")
-
-  @@map("verifications")
+  @@index([deletedAt])
+  @@index([status])
+  @@index([doctorId, appointmentDate])
+  @@map("appointments")
 }
 
-model Region {
-  id       Int  @id @default(autoincrement())
-  sourceId Int? @unique @map("source_id")
+// Treatment as a result of an appointment
+model Treatment {
+  id            String      @id @default(cuid())
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  description   String
+  cost          Decimal?
+  
+  // A treatment can have one prescription
+  prescription  Prescription?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  name String @unique
-
-  translations Json?
-  wikiDataId   String?  @map("wiki_data_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  countries  Country[]
-  subregions Subregion[]
-
-  @@map("regions")
+  @@map("treatments")
 }
 
-model Subregion {
-  id       Int  @id @default(autoincrement())
-  sourceId Int? @unique @map("source_id")
+// Prescription linked to a treatment
+model Prescription {
+  id          String   @id @default(cuid())
+  treatmentId String   @unique
+  treatment   Treatment @relation(fields: [treatmentId], references: [id])
+  notes       String?
+  
+  // A prescription can have multiple medication items
+  items       PrescriptionItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  name String @unique
-
-  translations Json?
-  wikiDataId   String?  @map("wiki_data_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  regionName String @map("region_name")
-  regionId   Int    @map("region_id")
-  region     Region @relation(fields: [regionId], references: [id])
-
-  countries Country[]
-
-  @@index([regionId])
-  @@map("subregions")
+  @@map("prescriptions")
 }
 
-model Country {
-  id       Int  @id @default(autoincrement())
-  sourceId Int? @unique @map("source_id")
+// Individual medication item in a prescription
+model PrescriptionItem {
+  id             String       @id @default(cuid())
+  prescriptionId String
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+  /// @prismabox.options{maxLength: 255}
+  medicationName String
+  /// @prismabox.options{maxLength: 100}
+  dosage         String // e.g., "500mg"
+  /// @prismabox.options{maxLength: 100}
+  frequency      String // e.g., "Twice a day"
+  /// @prismabox.options{maxLength: 100}
+  duration       String // e.g., "7 days"
 
-  name           String
-  iso3           String  @unique @db.Char(3)
-  iso2           String  @unique @db.Char(2)
-  numericCode    String? @map("numeric_code") @db.Char(3)
-  phoneCode      String? @map("phone_code")
-  capital        String?
-  currency       String?
-  currencyName   String? @map("currency_name")
-  currencySymbol String? @map("currency_symbol")
-  tld            String?
-  native         String?
-
-  latitude     Decimal? @db.Decimal(10, 8)
-  longitude    Decimal? @db.Decimal(11, 8)
-  emoji        String?
-  emojiU       String?  @map("emoji_u")
-  timezones    Json?
-  translations Json?
-  wikiDataId   String?  @map("wiki_data_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  regionName String? @map("region_name")
-  regionId   Int?    @map("region_id")
-  region     Region? @relation(fields: [regionId], references: [id])
-
-  subregionName String?    @map("subregion_name")
-  subregionId   Int?       @map("subregion_id")
-  subregion     Subregion? @relation(fields: [subregionId], references: [id])
-
-  states State[]
-  cities City[]
-
-  @@index([regionId])
-  @@index([subregionId])
-  @@map("countries")
+  @@map("prescription_items")
 }
 
-model State {
-  id       Int  @id @default(autoincrement())
-  sourceId Int? @unique @map("source_id")
+// Announcements
+model Announcement {
+  id String @id @default(cuid())
+  /// @prismabox.options{minLength: 3, maxLength: 255}
+  title     String
+  content   String
+  
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  name String
-
-  stateCode  String?  @map("state_code")
-  fipsCode   String?  @map("fips_code")
-  iso2       String?
-  type       String?
-  latitude   Decimal? @db.Decimal(10, 8)
-  longitude  Decimal? @db.Decimal(11, 8)
-  wikiDataId String?  @map("wiki_data_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  countryName String  @map("country_name")
-  countryCode String  @map("country_code") @db.Char(2)
-  countryId   Int     @map("country_id")
-  country     Country @relation(fields: [countryId], references: [id])
-
-  cities City[]
-
-  @@index([countryId])
-  @@map("states")
-}
-
-model City {
-  id       Int  @id @default(autoincrement())
-  sourceId Int? @unique @map("source_id")
-
-  name String
-
-  latitude   Decimal? @db.Decimal(10, 8)
-  longitude  Decimal? @db.Decimal(11, 8)
-  wikiDataId String?  @map("wiki_data_id")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  stateName String @map("state_name")
-  stateCode String @map("state_code")
-  stateId   Int    @map("state_id")
-  state     State  @relation(fields: [stateId], references: [id])
-
-  countryCode String  @map("country_code")
-  countryName String  @map("country_name")
-  countryId   Int     @map("country_id")
-  country     Country @relation(fields: [countryId], references: [id])
-
-  @@index([stateId])
-  @@index([countryId])
-  @@map("cities")
-}
-
-model FileLibraryAsset {
-  /// @prismabox.hide
-  id Int @id @default(autoincrement())
-
-  uuid String @unique @default(uuid())
-
-  name String @map("name") @db.VarChar(512)
-
-  type     FileLibraryAssetType     @map("type")
-  fileType FileLibraryAssetFileType @map("file_type")
-  mimeType FileLibraryAssetMimeType @map("mime_type")
-
-  size BigInt @map("size") @db.BigInt
-  path String @map("path") @db.VarChar(512)
-
-  //Özellik eklenebilir
-  //uploaderId String? @map("uploader_id")
-  //uploader   User?   @relation(fields: [uploaderId], references: [id])
-
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
-
-  user User[]
-
-  @@map("file_library_assets")
+  @@map("announcements")
 }

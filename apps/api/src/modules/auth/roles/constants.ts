@@ -32,7 +32,6 @@ export const PERMISSIONS = {
     UPDATE: { key: 'roles:update', description: 'Rolleri Güncelle' },
   },
   SYSTEM_ADMINISTRATION: {
-    SHOW_LOGS: { key: 'system-administration:show-logs', description: 'Logları Görüntüle' },
     RESET_DATABASE: {
       key: 'system-administration:reset-database',
       description: 'Veritabanını Sıfırla',
@@ -43,18 +42,6 @@ export const PERMISSIONS = {
       description: "Veritabanını Seed'le",
       isHidden: true,
     },
-  },
-  POSTS: {
-    SHOW: { key: 'posts:show', description: 'Gönderileri Görüntüle' },
-    CREATE: { key: 'posts:create', description: 'Gönderi Oluştur' },
-    UPDATE: { key: 'posts:update', description: 'Gönderi Güncelle' },
-    DESTROY: { key: 'posts:destroy', description: 'Gönderi Sil' },
-  },
-  FILE_LIBRARY_ASSETS: {
-    SHOW: { key: 'file-library-assets:show', description: 'Dosya Görüntüle', isHidden: true },
-    CREATE: { key: 'file-library-assets:create', description: 'Dosya Oluştur', isHidden: true },
-    UPDATE: { key: 'file-library-assets:update', description: 'Dosya Güncelle', isHidden: true },
-    DESTROY: { key: 'file-library-assets:destroy', description: 'Dosya Sil', isHidden: true },
   },
 } as const satisfies Record<string, Record<string, GenericPermissionObject>>;
 
@@ -81,16 +68,6 @@ export const PERMISSION_GROUPS = {
     key: 'system-administration',
     description: 'Sistem Yönetimi',
     permissions: Object.values(PERMISSIONS.SYSTEM_ADMINISTRATION),
-  },
-  POSTS: {
-    key: 'posts',
-    description: 'Gönderiler',
-    permissions: Object.values(PERMISSIONS.POSTS),
-  },
-  FILE_LIBRARY_ASSETS: {
-    key: 'file-library-assets',
-    description: 'Dosya Yönetimi',
-    permissions: Object.values(PERMISSIONS.FILE_LIBRARY_ASSETS),
   },
 } as const satisfies Record<
   string,

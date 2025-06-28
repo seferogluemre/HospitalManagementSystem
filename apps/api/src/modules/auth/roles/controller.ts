@@ -1,7 +1,6 @@
 import { Elysia } from 'elysia';
-import { dtoWithMiddlewares } from '../../../utils';
-import { AuditLogAction, AuditLogEntity, withAuditLog } from '../../audit-logs';
 import { dtoWithPermission } from '../';
+import { dtoWithMiddlewares } from '../../../utils';
 import { auth, authSwagger } from '../authentication/plugin';
 import { withPermission } from '../roles/middleware';
 import { PERMISSIONS } from './constants';
@@ -45,14 +44,6 @@ const app = new Elysia({
       dtoWithMiddlewares(
         roleStoreDto,
         withPermission(PERMISSIONS.ROLES.UPDATE),
-        withAuditLog<typeof roleStoreDto>({
-          actionType: AuditLogAction.CREATE,
-          entityType: AuditLogEntity.ROLE,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          getEntityUuid: ({ response }) => (response as any).uuid,
-          getDescription: () => 'Yeni rol oluşturuldu',
-          getMetadata: ({ body }) => ({ createdFields: body }),
-        }),
       ),
     )
     .patch(
@@ -65,13 +56,6 @@ const app = new Elysia({
       dtoWithMiddlewares(
         roleUpdateDto,
         withPermission(PERMISSIONS.ROLES.UPDATE),
-        withAuditLog<typeof roleUpdateDto>({
-          actionType: AuditLogAction.UPDATE,
-          entityType: AuditLogEntity.ROLE,
-          getEntityUuid: ({ params }) => params.uuid!,
-          getDescription: ({ body }) => `Rol güncellendi: ${Object.keys(body).join(', ')}`,
-          getMetadata: ({ body }) => ({ updatedFields: body }),
-        }),
       ),
     )
     .delete(
@@ -83,12 +67,6 @@ const app = new Elysia({
       dtoWithMiddlewares(
         roleDestroyDto,
         withPermission(PERMISSIONS.ROLES.UPDATE),
-        withAuditLog<typeof roleDestroyDto>({
-          actionType: AuditLogAction.DELETE,
-          entityType: AuditLogEntity.ROLE,
-          getEntityUuid: ({ params }) => params.uuid!,
-          getDescription: () => 'Rol silindi',
-        }),
       ),
     ),
 );

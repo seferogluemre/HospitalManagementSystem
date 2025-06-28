@@ -1,9 +1,7 @@
 import prisma from '@onlyjs/db';
-import { type Gender, Prisma, type User } from '@onlyjs/db/client';
+import { Prisma, type User } from '@onlyjs/db/client';
 import { PrismaClientKnownRequestError } from '@onlyjs/db/client/runtime/library';
-import { FileLibraryAssetType } from '@onlyjs/db/enums';
 import { UserWhereUnique } from '@onlyjs/db/prismabox/User';
-import { FileLibraryAssetsService } from '#modules/file-library-assets';
 import { ConflictException, InternalServerErrorException, NotFoundException } from '../../utils';
 import { betterAuth } from '../auth/authentication/instance';
 import { getUserFilters } from './dtos';
@@ -31,7 +29,6 @@ interface UserPayload {
   firstName?: string;
   lastName?: string;
   isActive?: boolean;
-  gender?: Gender;
 }
 
 export abstract class UsersService {
@@ -160,19 +157,6 @@ export abstract class UsersService {
 
       const updates: Prisma.UserUpdateInput = {};
 
-      const file = payload.imageFile;
-      if (file) {
-        const fileLibraryAsset = await FileLibraryAssetsService.store({
-          file,
-          type: FileLibraryAssetType.USER_IMAGE,
-        });
-
-        updates.imageAsset = {
-          connect: { id: fileLibraryAsset.id },
-        };
-
-        updates.image = fileLibraryAsset.path;
-      }
 
       const updatedUser = await prisma.user.update({
         where: { id: signInResponse.user.id },
@@ -194,7 +178,6 @@ export abstract class UsersService {
     try {
       const user = await prisma.user.findUnique({
         where: { id },
-        include: { imageAsset: true },
       });
 
       if (!user) {
@@ -205,25 +188,20 @@ export abstract class UsersService {
 
       const updates: Prisma.UserUpdateInput = { ...userPayload };
 
-      const file = payload.imageFile;
-      if (file !== undefined) {
-        if (user.imageAsset) {
-          await FileLibraryAssetsService.destroy(user.imageAsset.uuid);
-        }
 
-        if (file !== null) {
-          const fileLibraryAsset = await FileLibraryAssetsService.store({
-            file,
-            type: FileLibraryAssetType.USER_IMAGE,
-          });
 
-          updates.imageAsset = { connect: { id: fileLibraryAsset.id } };
-          updates.image = fileLibraryAsset.path;
-        } else {
-          updates.imageAsset = { disconnect: true };
-          updates.image = null;
-        }
-      }
+          if (file !== null) {
+            const fileLibraryAsset = await FileLibraryAssetsService.store({
+              file,
+              type: FileLibraryAssetType.USER_IMAGE,
+            });
+
+            updates.imageAsset = { connect: { id: fileLibraryAsset.id } };
+            updates.image = fileLibraryAsset.path;
+          } else {
+            updates.imageAsset = { disconnect: true };
+            updates.image = null;
+          }
 
       const updatedUser = await prisma.user.update({
         where: { id },

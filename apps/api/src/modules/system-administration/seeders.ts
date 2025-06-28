@@ -1,6 +1,5 @@
-import prisma from '@onlyjs/db';
-import { Gender } from '@onlyjs/db/enums';
 import { GoneException } from '#utils';
+import prisma from '@onlyjs/db';
 import { RolesService } from '../auth';
 import { UsersService } from '../users';
 
@@ -31,10 +30,9 @@ export class SeedersService {
     const user = await UsersService.store({
       password: 'password',
       email: 'admin@example.com',
-      firstName: 'Admin',
-      lastName: 'User',
+      firstName: 'System',
+      lastName: 'Admin',
       rolesSlugs: [adminRole.slug],
-      gender: Gender.MALE,
     });
 
     return {

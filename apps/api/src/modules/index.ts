@@ -1,8 +1,5 @@
 import Elysia from 'elysia';
 import { authenticationController, rolesController } from './auth';
-import { fileLibraryAssetsController } from './file-library-assets';
-import { locationsController } from './locations';
-import { postsController } from './posts';
 import { systemAdministrationController } from './system-administration';
 import { usersController } from './users';
 
@@ -11,9 +8,6 @@ const app = new Elysia()
   .use(usersController)
   .use(authenticationController)
   .use(rolesController)
-  .use(postsController)
-  .use(locationsController)
-  .use(fileLibraryAssetsController)
   .get(
     '/',
     () => ({

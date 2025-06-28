@@ -1,5 +1,4 @@
 import { Elysia } from 'elysia';
-import { auditLogsController } from '../audit-logs';
 import { dtoWithPermission, PERMISSIONS } from '../auth';
 import { UserFormatter } from '../users';
 import { initialSetupDto, resetDatabaseDto } from './dto';
@@ -12,7 +11,6 @@ const app = new Elysia({
     tags: ['System Administration'],
   },
 })
-  .use(auditLogsController)
   .post(
     '/initial',
     async () => {

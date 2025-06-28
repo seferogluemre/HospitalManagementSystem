@@ -1,5 +1,4 @@
 import { faker } from '@faker-js/faker';
-import { Gender } from '@onlyjs/db/enums';
 import { createSeeder } from '@onlyjs/db/seeder/utils';
 
 const usersSeeder = createSeeder(
@@ -23,10 +22,7 @@ const usersSeeder = createSeeder(
               lastName,
               name: `${firstName} ${lastName}`.slice(0, 101),
               email: faker.internet.email().slice(0, 255),
-              gender: faker.helpers.arrayElement(Object.values(Gender)),
-              rolesSlugs: ['basic'],
               emailVerified: true,
-              image: faker.image.avatar().slice(0, 255),
             },
           });
         }),

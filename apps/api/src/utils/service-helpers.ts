@@ -1,39 +1,50 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { type TSchema, t } from 'elysia';
+import { type TSchema, t } from "elysia";
 
-import { BadRequestException } from './http-errors';
+import { BadRequestException } from "./http-errors";
 
 export function prepareOrderBy(orderByArray: string[], modelKeys: string[]) {
   const orderByInput = orderByArray ?? [];
-  const orderBy: { [key: string]: 'asc' | 'desc' }[] = [];
+  const orderBy: { [key: string]: "asc" | "desc" }[] = [];
 
   if (orderByInput.length === 0) {
-    orderByInput.push('createdAt:desc');
+    orderByInput.push("createdAt:desc");
   }
 
   orderByInput.forEach((orderByItem) => {
-    const [key, value = 'asc'] = orderByItem.split(':');
+    const [key, value = "asc"] = orderByItem.split(":");
     if (!key) return;
 
     if (!modelKeys.includes(key)) {
-      throw new BadRequestException('Sıralama özelliği "' + key + '" bulunamadı');
+      throw new BadRequestException(
+        'Sıralama özelliği "' + key + '" bulunamadı'
+      );
     }
 
-    if (!['asc', 'desc'].includes(value)) {
-      throw new BadRequestException('Sıralama yönü "' + key + ':' + value + '" bulunamadı');
+    if (!["asc", "desc"].includes(value)) {
+      throw new BadRequestException(
+        'Sıralama yönü "' + key + ":" + value + '" bulunamadı'
+      );
     }
 
-    orderBy.push({ [key]: value as 'asc' | 'desc' });
+    orderBy.push({ [key]: value as "asc" | "desc" });
   });
 
   return orderBy;
 }
 
-export function prepareMultipleOptionsFilter<Key extends string, Value>(key: Key, value: Value) {
+export function prepareMultipleOptionsFilter<Key extends string, Value>(
+  key: Key,
+  value: Value
+) {
   if (!value) return undefined;
   const hasFilter = !!value;
   const isFilterArray = hasFilter && Array.isArray(value);
-  const valuesArray = hasFilter ? (Array.isArray(value!) ? value! : [value!]) : undefined;
+  const valuesArray = hasFilter
+    ? Array.isArray(value!)
+      ? value!
+      : [value!]
+    : undefined;
   const valueWhere = hasFilter
     ? isFilterArray
       ? {
@@ -74,17 +85,24 @@ export function prepareDateFilter<
   return [hasFilter, filter] as const;
 }
 
-export function prepareDateFilters(queryObject: object | null | undefined, keys: string[]) {
+export function prepareDateFilters(
+  queryObject: object | null | undefined,
+  keys: string[]
+) {
   const filters: DateWherePayload[] = [];
 
   if (queryObject) {
     keys.forEach((key) => {
       // @ts-ignore
-      const dateBefore = queryObject[key + 'Before'] as WhereDateInput;
+      const dateBefore = queryObject[key + "Before"] as WhereDateInput;
       // @ts-ignore
-      const dateAfter = queryObject[key + 'After'] as WhereDateInput;
+      const dateAfter = queryObject[key + "After"] as WhereDateInput;
 
-      const [hasDateFilter, dateFilter] = prepareDateFilter(key, dateBefore, dateAfter);
+      const [hasDateFilter, dateFilter] = prepareDateFilter(
+        key,
+        dateBefore,
+        dateAfter
+      );
 
       if (hasDateFilter) {
         // @ts-ignore
@@ -106,7 +124,11 @@ interface FilterKeys {
   others?: { [key: string]: TSchema } | undefined;
 }
 
-export function prepareFiltersDto<T>(dtoObject: T, keys: FilterKeys, addOrderBy = true) {
+export function prepareFiltersDto<T>(
+  dtoObject: T,
+  keys: FilterKeys,
+  addOrderBy = true
+) {
   const filters: { [key: string]: typeof t.Object } = {};
 
   {
@@ -114,21 +136,23 @@ export function prepareFiltersDto<T>(dtoObject: T, keys: FilterKeys, addOrderBy 
       // @ts-ignore
       const schema = dtoObject.properties[key];
       if (schema) {
-        const isBoolean = schema.type === 'boolean';
+        const isBoolean = schema.type === "boolean";
         if (isBoolean) {
           // @ts-ignore
           filters[key] = t.Optional(
             t
               .Transform(t.Union([t.Boolean(), t.Undefined()]))
-              .Decode((value) => (value != null ? JSON.parse(value as unknown as string) : value)) // decode: number to Date
-              .Encode((value) => value.toString()),
+              .Decode((value) =>
+                value != null ? JSON.parse(value as unknown as string) : value
+              ) // decode: number to Date
+              .Encode((value) => value.toString())
           );
         } else {
           // @ts-ignore
           filters[key] = t.Optional(schema);
         }
       } else {
-        console.error('schema is undefined: ' + key, keys);
+        console.error("schema is undefined: " + key, keys);
       }
     });
   }
@@ -136,15 +160,19 @@ export function prepareFiltersDto<T>(dtoObject: T, keys: FilterKeys, addOrderBy 
   {
     keys.date?.forEach((key) => {
       // @ts-ignore
-      const schema = dtoObject.properties[key];
+      const schema = dtoObject?.properties?.[key];
 
       if (schema) {
         // @ts-ignore
-        filters[key + 'Before'] = t.Optional(t.String({ format: 'iso-date-time' }));
+        filters[key + "Before"] = t.Optional(
+          t.String({ format: "iso-date-time" })
+        );
         // @ts-ignore
-        filters[key + 'After'] = t.Optional(t.String({ format: 'iso-date-time' }));
+        filters[key + "After"] = t.Optional(
+          t.String({ format: "iso-date-time" })
+        );
       } else {
-        console.error('schema is undefined: ' + key, keys);
+        console.error("schema is undefined: " + key, keys);
       }
     });
   }
@@ -158,7 +186,7 @@ export function prepareFiltersDto<T>(dtoObject: T, keys: FilterKeys, addOrderBy 
         // @ts-ignore
         filters[key] = t.Optional(t.Array(schema));
       } else {
-        console.error('schema is undefined: ' + key, keys);
+        console.error("schema is undefined: " + key, keys);
       }
     });
   }
@@ -166,13 +194,13 @@ export function prepareFiltersDto<T>(dtoObject: T, keys: FilterKeys, addOrderBy 
   {
     keys.search?.forEach((key) => {
       // @ts-ignore
-      const schema = dtoObject.properties[key];
+      const schema = dtoObject?.properties?.[key];
 
       if (schema) {
         // @ts-ignore
         filters[key] = t.Optional(schema);
       } else {
-        console.error('schema is undefined: ' + key, keys);
+        console.error("schema is undefined: " + key, keys);
       }
     });
   }
@@ -184,11 +212,11 @@ export function prepareFiltersDto<T>(dtoObject: T, keys: FilterKeys, addOrderBy 
 
       if (schema) {
         // @ts-ignore
-        filters[key + 'Lt'] = t.Optional(dtoObject.properties[key]);
+        filters[key + "Lt"] = t.Optional(dtoObject.properties[key]);
         // @ts-ignore
-        filters[key + 'Gt'] = t.Optional(dtoObject.properties[key]);
+        filters[key + "Gt"] = t.Optional(dtoObject.properties[key]);
       } else {
-        console.error('schema is undefined: ' + key, keys);
+        console.error("schema is undefined: " + key, keys);
       }
     });
   }
@@ -202,7 +230,7 @@ export function prepareFiltersDto<T>(dtoObject: T, keys: FilterKeys, addOrderBy 
 
   if (addOrderBy) {
     // @ts-ignore
-    filters['orderBy'] = t.Optional(t.Array(t.String()));
+    filters["orderBy"] = t.Optional(t.Array(t.String()));
   }
 
   return t.Partial(t.Object(filters as any));
@@ -211,7 +239,7 @@ export function prepareFiltersDto<T>(dtoObject: T, keys: FilterKeys, addOrderBy 
 export function prepareFiltersQuery(
   queryObject: object | null | undefined,
   keys: FilterKeys,
-  addOrderBy: boolean | string[] = true,
+  addOrderBy: boolean | string[] = true
 ) {
   if (!queryObject) return [false, []] as const;
 
@@ -244,7 +272,10 @@ export function prepareFiltersQuery(
 
   {
     if (keys.date && keys.date.length > 0) {
-      const [hasFiltersLocal, filters] = prepareDateFilters(queryObject, keys.date);
+      const [hasFiltersLocal, filters] = prepareDateFilters(
+        queryObject,
+        keys.date
+      );
 
       if (hasFiltersLocal) {
         hasFilters = true;
@@ -282,8 +313,8 @@ export function prepareFiltersQuery(
 
           searchFilters.push({
             [key]: {
-              contains: value.toLocaleUpperCase('tr'),
-              mode: 'insensitive',
+              contains: value.toLocaleUpperCase("tr"),
+              mode: "insensitive",
             },
           });
         }
@@ -295,9 +326,9 @@ export function prepareFiltersQuery(
     if (keys.numeric && keys.numeric.length > 0) {
       keys.numeric.forEach((key) => {
         // @ts-ignore
-        const valueGtWhere = queryObject[key + 'Gt'];
+        const valueGtWhere = queryObject[key + "Gt"];
         // @ts-ignore
-        const valueLtWhere = queryObject[key + 'Lt'];
+        const valueLtWhere = queryObject[key + "Lt"];
 
         if (valueGtWhere || valueLtWhere) {
           hasFilters = true;
@@ -337,7 +368,7 @@ function filterJsData<T>(
   queryObject: object | null | undefined,
   keys: FilterKeys,
   data: T[],
-  addOrderBy: boolean | string[] = true,
+  addOrderBy: boolean | string[] = true
 ) {
   if (!queryObject) return data;
 
@@ -350,7 +381,7 @@ function filterJsData<T>(
     if (value != null) {
       filters.push((item: any) => {
         const itemValue = item[key];
-        if (typeof itemValue === 'string' && typeof value === 'string') {
+        if (typeof itemValue === "string" && typeof value === "string") {
           return itemValue.toLowerCase().includes(value.toLowerCase());
         }
         return itemValue === value;
@@ -391,7 +422,7 @@ function filterJsData<T>(
     // @ts-ignore
     const value = queryObject[key];
     if (value) {
-      const values = Array.isArray(value) ? value : value.split(',');
+      const values = Array.isArray(value) ? value : value.split(",");
       filters.push((item: any) => {
         const itemValue = item[key];
         if (Array.isArray(itemValue)) {
@@ -409,7 +440,7 @@ function filterJsData<T>(
     if (value) {
       filters.push((item: any) => {
         const itemValue = item[key];
-        if (typeof itemValue === 'string' && typeof value === 'string') {
+        if (typeof itemValue === "string" && typeof value === "string") {
           return itemValue.toLowerCase().includes(value.toLowerCase());
         }
         return false;
@@ -420,28 +451,28 @@ function filterJsData<T>(
   // Numeric filters
   keys.numeric?.forEach((key) => {
     // @ts-ignore
-    const gtValue = queryObject[key + 'Gt'];
+    const gtValue = queryObject[key + "Gt"];
     // @ts-ignore
-    const ltValue = queryObject[key + 'Lt'];
+    const ltValue = queryObject[key + "Lt"];
 
     if (gtValue) {
       filters.push((item: any) => {
         const itemValue = item[key];
-        return typeof itemValue === 'number' && itemValue >= Number(gtValue);
+        return typeof itemValue === "number" && itemValue >= Number(gtValue);
       });
     }
 
     if (ltValue) {
       filters.push((item: any) => {
         const itemValue = item[key];
-        return typeof itemValue === 'number' && itemValue <= Number(ltValue);
+        return typeof itemValue === "number" && itemValue <= Number(ltValue);
       });
     }
   });
 
   let result = data.filter((item) => filters.every((filter) => filter(item)));
 
-  if (addOrderBy && queryObject && 'orderBy' in queryObject) {
+  if (addOrderBy && queryObject && "orderBy" in queryObject) {
     const allKeyNames = [
       ...(keys.simple ?? []),
       ...(keys.date ?? []),
@@ -454,7 +485,7 @@ function filterJsData<T>(
     const orderByRules = prepareOrderBy(
       // @ts-ignore
       queryObject.orderBy,
-      allKeyNames,
+      allKeyNames
     );
 
     if (orderByRules.length > 0) {
@@ -466,7 +497,7 @@ function filterJsData<T>(
           if (aValue === bValue) continue;
 
           const compareResult = aValue > bValue ? 1 : -1;
-          return rule.direction === 'asc' ? compareResult : -compareResult;
+          return rule.direction === "asc" ? compareResult : -compareResult;
         }
         return 0;
       });
@@ -479,15 +510,16 @@ function filterJsData<T>(
 export function prepareFilters<T>(
   dtoObject: T,
   keys: FilterKeys,
-  addOrderBy: boolean | string[] = false,
+  addOrderBy: boolean | string[] = false
 ) {
   const filtersDto = prepareFiltersDto(dtoObject, keys, !!addOrderBy);
   const getFiltersQuery = (queryObject: object | null | undefined) =>
     prepareFiltersQuery(queryObject, keys, !!addOrderBy);
-  const filterData: <T>(data: T[], queryObject: object | null | undefined) => T[] = (
-    data,
-    queryObject,
-  ) => filterJsData(queryObject, keys, data, !!addOrderBy);
+  const filterData: <T>(
+    data: T[],
+    queryObject: object | null | undefined
+  ) => T[] = (data, queryObject) =>
+    filterJsData(queryObject, keys, data, !!addOrderBy);
 
   return [filtersDto as T, getFiltersQuery, filterData] as const;
 }

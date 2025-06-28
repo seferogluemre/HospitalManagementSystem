@@ -1,6 +1,5 @@
 import { Elysia } from 'elysia';
 import { dtoWithMiddlewares } from '../../utils';
-import { AuditLogAction, AuditLogEntity, withAuditLog } from '../audit-logs';
 import { dtoWithPermission } from '../auth';
 import { auth, authSwagger } from '../auth/authentication/plugin';
 import { PERMISSIONS } from '../auth/roles/constants';
@@ -30,15 +29,6 @@ const app = new Elysia({
         dtoWithMiddlewares(
           userCreateDto,
           withPermission(PERMISSIONS.USERS.CREATE),
-          withAuditLog<typeof userCreateDto>({
-            actionType: AuditLogAction.CREATE,
-            entityType: AuditLogEntity.USER,
-            getEntityUuid: (ctx) => {
-              const response = ctx.response as ReturnType<typeof UserFormatter.response>;
-              return response.id;
-            },
-            getDescription: () => 'Yeni kullanıcı oluşturuldu',
-          }),
         ),
       )
       .get(
@@ -70,15 +60,7 @@ const app = new Elysia({
           const response = UserFormatter.response(updatedUser);
           return response;
         },
-        dtoWithMiddlewares(
-          userUpdateDto,
-          withAuditLog<typeof userUpdateDto>({
-            actionType: AuditLogAction.UPDATE,
-            entityType: AuditLogEntity.USER,
-            getEntityUuid: ({ params }) => params.id!,
-            getDescription: ({ body }) => `Kullanıcı güncellendi`,
-          }),
-        ),
+        userUpdateDto,
       )
       .delete(
         '/:id', // destroy
@@ -89,12 +71,6 @@ const app = new Elysia({
         dtoWithMiddlewares(
           userDestroyDto,
           withPermission(PERMISSIONS.USERS.DESTROY),
-          withAuditLog<typeof userDestroyDto>({
-            actionType: AuditLogAction.DELETE,
-            entityType: AuditLogEntity.USER,
-            getEntityUuid: ({ params }) => params.id!,
-            getDescription: () => 'Kullanıcı silindi',
-          }),
         ),
       ),
   );
